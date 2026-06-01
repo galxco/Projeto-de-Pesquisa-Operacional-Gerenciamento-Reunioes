@@ -1,26 +1,15 @@
-"""
-Motor de agendamento usando OR-Tools (CP-SAT).
-
-Para cada reuniao, o solver tenta encontrar (dia, slot, sala) que:
-  - Nao sobreponha outra reuniao na mesma sala/dia
-  - Nao sobreponha outra reuniao do mesmo stakeholder
-  - Nao cruze o horario de almoco
-  - Nao ultrapasse 17:30
-
-Funcao objetivo: minimizar sala (menor primeiro) e slot (mais cedo).
-"""
 from ortools.sat.python import cp_model
-from models import SALAS, DIAS_SEMANA, SLOTS_POR_DIA, SLOTS_ALMOCO, slot_para_hora
+from models import DIAS_SEMANA, SLOTS_POR_DIA, SLOTS_ALMOCO, slot_para_hora
 
 
-def salas_validas(total_pessoas):
-    """Retorna salas que comportam o grupo, da menor para a maior."""
-    return [s for s in sorted(SALAS, key=lambda s: s["capacidade"])
+def salas_validas(salas, total_pessoas):
+    """Retorna salas (da lista dinâmica) que comportam o grupo."""
+    return [s for s in sorted(salas, key=lambda s: s["capacidade"])
             if s["capacidade"] >= total_pessoas]
 
 
 def slots_validos(duracao):
-    """Retorna slots de inicio que nao cruzam o almoco nem ultrapassam 17:30."""
+    """Retorna slots de início válidos (sem sobrepor almoço)."""
     validos = []
     for s in range(SLOTS_POR_DIA - duracao + 1):
         if not set(range(s, s + duracao)).intersection(SLOTS_ALMOCO):
@@ -30,35 +19,54 @@ def slots_validos(duracao):
 
 class AgendaSolver:
 
-    def __init__(self):
-        # agenda[dia][sala_id] = lista de (slot_inicio, slot_fim)
-        self.agenda = {dia: {s["id"]: [] for s in SALAS} for dia in range(5)}
+    def __init__(self, salas: list):
+        self._salas  = salas         
+        self.agenda  = {}
+        self._rebuild_agenda()
         self.reunioes = []
 
-    # --------------------------------------------------
-    # RESOLVER COM CP-SAT
-    # --------------------------------------------------
+    # ------------------------------------------------------------------
+    # Gerência de agenda ao vivo
+    # ------------------------------------------------------------------
+
+    def _rebuild_agenda(self):
+        """Reconstrói o dicionário de agenda com as salas atuais."""
+        nova = {}
+        for dia in range(5):
+            nova[dia] = {}
+            for s in self._salas:
+                nova[dia][s["id"]] = self.agenda.get(dia, {}).get(s["id"], [])
+        self.agenda = nova
+
+    def registrar_nova_sala(self, sala: dict):
+        """Adiciona entradas de agenda para uma sala recém-criada."""
+        for dia in range(5):
+            self.agenda[dia][sala["id"]] = []
+
+    # ------------------------------------------------------------------
+    # CP-SAT
+    # ------------------------------------------------------------------
 
     def _resolver(self, reuniao, reunioes_fixas):
         """
         Usa CP-SAT para encontrar (dia, slot, sala).
-        Retorna a tupla ou None se inviavel.
+        Retorna a tupla ou None se inviável.
         """
         model = cp_model.CpModel()
 
-        dias   = reuniao.dias_possiveis
-        slots  = slots_validos(reuniao.duracao_slots)
-        salas  = salas_validas(reuniao.total_pessoas)
+        dias  = reuniao.dias_possiveis
+        slots = slots_validos(reuniao.duracao_slots)
+        salas = salas_validas(self._salas, reuniao.total_pessoas)
 
         if not dias or not slots or not salas:
             return None
 
-        # Variaveis: indices dentro das listas acima
+        # Variáveis
         dia_var  = model.NewIntVar(0, len(dias)  - 1, "dia")
         slot_var = model.NewIntVar(0, len(slots) - 1, "slot")
         sala_var = model.NewIntVar(0, len(salas) - 1, "sala")
 
-        # Restricoes de conflito com reunioes ja agendadas
+        # Restrições de conflito
         for fixa in reunioes_fixas:
             if not fixa.agendada or fixa.dia_agendado not in dias:
                 continue
@@ -73,7 +81,6 @@ class AgendaSolver:
                     continue
                 for sj, sp in enumerate(slots):
                     if sp < fim_fixa and sp + reuniao.duracao_slots > ini_fixa:
-                        # proibir: mesmo dia AND mesmo slot AND mesma sala
                         mesmo_dia  = model.NewBoolVar(f"d_{fixa.id}_{si}_{sj}")
                         mesmo_slot = model.NewBoolVar(f"s_{fixa.id}_{si}_{sj}")
                         mesma_sala = model.NewBoolVar(f"r_{fixa.id}_{si}_{sj}")
@@ -111,9 +118,9 @@ class AgendaSolver:
             )
         return None
 
-    # --------------------------------------------------
-    # AGENDAR
-    # --------------------------------------------------
+    # ------------------------------------------------------------------
+    # Agendar
+    # ------------------------------------------------------------------
 
     def agendar(self, reuniao):
         resultado = self._resolver(reuniao, self.reunioes)
@@ -128,30 +135,24 @@ class AgendaSolver:
         self.reunioes.append(reuniao)
         return True
 
-    # --------------------------------------------------
-    # SUGESTAO DE REMANEJAMENTO
-    # --------------------------------------------------
+    # ------------------------------------------------------------------
+    # Sugestão de remanejamento
+    # ------------------------------------------------------------------
 
     def sugerir_remanejamento(self, reuniao):
-        """
-        Testa remover cada reuniao de prioridade menor e verifica se
-        abre espaco para a nova reuniao. Retorna a candidata ou None.
-        """
         for candidata in self.reunioes:
             if not candidata.agendada:
                 continue
             if candidata.stakeholder["prioridade"] >= reuniao.stakeholder["prioridade"]:
                 continue
-
             fixas_sem = [r for r in self.reunioes if r is not candidata]
             if self._resolver(reuniao, fixas_sem) is not None:
                 return candidata
-
         return None
 
-    # --------------------------------------------------
-    # REMOVER
-    # --------------------------------------------------
+    # ------------------------------------------------------------------
+    # Remover
+    # ------------------------------------------------------------------
 
     def remover_reuniao(self, reuniao):
         if reuniao.agendada:
@@ -167,9 +168,9 @@ class AgendaSolver:
         if reuniao in self.reunioes:
             self.reunioes.remove(reuniao)
 
-    # --------------------------------------------------
-    # VISUALIZACAO
-    # --------------------------------------------------
+    # ------------------------------------------------------------------
+    # Visualização
+    # ------------------------------------------------------------------
 
     def exibir_agenda(self):
         print("\n" + "=" * 60)
@@ -179,12 +180,15 @@ class AgendaSolver:
         tem_algo = False
         for dia in range(5):
             eventos = []
-            for sala in SALAS:
-                for ini, fim in self.agenda[dia][sala["id"]]:
+            for sala in self._salas:
+                sid = sala["id"]
+                if sid not in self.agenda[dia]:
+                    continue
+                for ini, fim in self.agenda[dia][sid]:
                     r = next(
                         (r for r in self.reunioes
                          if r.agendada and r.dia_agendado == dia
-                         and r.slot_inicio == ini and r.sala["id"] == sala["id"]),
+                         and r.slot_inicio == ini and r.sala["id"] == sid),
                         None
                     )
                     if r:

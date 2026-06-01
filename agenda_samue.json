@@ -1,0 +1,70 @@
+{
+  "salas": [
+    {
+      "id": 0,
+      "nome": "Sala Pequena",
+      "capacidade": 6
+    },
+    {
+      "id": 1,
+      "nome": "Sala Media",
+      "capacidade": 15
+    },
+    {
+      "id": 2,
+      "nome": "Sala Grande",
+      "capacidade": 20
+    },
+    {
+      "id": 3,
+      "nome": "Sala Secreta",
+      "capacidade": 5
+    }
+  ],
+  "reunioes": [
+    {
+      "id": 1,
+      "stakeholder_id": 3,
+      "stakeholder_nome": "ComexCia",
+      "extras": 0,
+      "total_pessoas": 15,
+      "duracao_slots": 5,
+      "duracao_horas": 2.5,
+      "dias_possiveis": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "agendada": true,
+      "dia_agendado": 0,
+      "dia_nome": "Segunda-feira",
+      "slot_inicio": 0,
+      "horario_inicio": "08:00",
+      "horario_fim": "10:30",
+      "sala_id": 1,
+      "sala_nome": "Sala Media"
+    },
+    {
+      "id": 2,
+      "stakeholder_id": 2,
+      "stakeholder_nome": "MobileInc.",
+      "extras": 10,
+      "total_pessoas": 15,
+      "duracao_slots": 8,
+      "duracao_horas": 4.0,
+      "dias_possiveis": [
+        0
+      ],
+      "agendada": true,
+      "dia_agendado": 0,
+      "dia_nome": "Segunda-feira",
+      "slot_inicio": 11,
+      "horario_inicio": "13:30",
+      "horario_fim": "17:30",
+      "sala_id": 1,
+      "sala_nome": "Sala Media"
+    }
+  ]
+}

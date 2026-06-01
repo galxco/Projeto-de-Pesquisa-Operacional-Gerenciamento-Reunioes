@@ -8,22 +8,27 @@ DIAS_SEMANA = {
 
 # Cada slot = 30 minutos | slot 0 = 08:00 | slot 18 = 17:30
 SLOT_DURACAO_MIN = 30
-SLOTS_POR_DIA    = 19       # slots 0 a 18
-SLOTS_ALMOCO     = {8, 9, 10}  # 12:00, 12:30, 13:00 — bloqueados
+SLOTS_POR_DIA    = 19
+SLOTS_ALMOCO     = {8, 9, 10}
 
 def slot_para_hora(slot):
     minutos = 8 * 60 + slot * SLOT_DURACAO_MIN
     return f"{minutos // 60:02d}:{minutos % 60:02d}"
 
 
-# Salas disponíveis: lista de dicionários simples
-SALAS = [
-    {"id": 0, "nome": "Sala Pequena", "capacidade": 6},
-    {"id": 1, "nome": "Sala Media",   "capacidade": 15},
-    {"id": 2, "nome": "Sala Grande",  "capacidade": 20},
-]
+# Esta lista começa vazia; salas padrão são adicionadas em main.py
+SALAS = []
 
-# Stakeholders: lista de dicionários simples
+_proximo_id_sala = 0
+
+def criar_sala(nome: str, capacidade: int) -> dict:
+    global _proximo_id_sala
+    sala = {"id": _proximo_id_sala, "nome": nome, "capacidade": capacidade}
+    _proximo_id_sala += 1
+    return sala
+
+
+# Stakeholders
 STAKEHOLDERS = [
     {"id": 0, "nome": "TechNova",   "num_pessoas": 4,  "prioridade": 2},
     {"id": 1, "nome": "IAnovidade", "num_pessoas": 6,  "prioridade": 5},
@@ -33,19 +38,18 @@ STAKEHOLDERS = [
 
 
 class Reuniao:
-    """Representa uma reunião a ser agendada."""
 
     def __init__(self, id, stakeholder, extras, duracao_slots, dias_possiveis):
-        self.id               = id
-        self.stakeholder      = stakeholder        # dicionário de STAKEHOLDERS
-        self.extras           = extras             # pessoas além do grupo
-        self.duracao_slots    = duracao_slots
-        self.dias_possiveis   = dias_possiveis     # lista de índices 0-4
+        self.id             = id
+        self.stakeholder    = stakeholder
+        self.extras         = extras
+        self.duracao_slots  = duracao_slots
+        self.dias_possiveis = dias_possiveis
 
         # Preenchido após agendamento
-        self.dia_agendado  = None
-        self.slot_inicio   = None
-        self.sala          = None                  # dicionário de SALAS
+        self.dia_agendado = None
+        self.slot_inicio  = None
+        self.sala         = None
 
     @property
     def total_pessoas(self):

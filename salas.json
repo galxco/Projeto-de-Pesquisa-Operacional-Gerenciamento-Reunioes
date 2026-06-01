@@ -1,0 +1,35 @@
+{
+  "salas": [
+    {
+      "id": 0,
+      "nome": "Sala Pequena",
+      "capacidade": 6
+    },
+    {
+      "id": 1,
+      "nome": "Sala Media",
+      "capacidade": 15
+    },
+    {
+      "id": 2,
+      "nome": "Sala Grande",
+      "capacidade": 20
+    },
+    {
+      "id": 3,
+      "nome": "Sala VIP",
+      "capacidade": 8
+    },
+    {
+      "id": 4,
+      "nome": "Sala de Treinamento",
+      "capacidade": 25
+    },
+    {
+      "id": 5,
+      "nome": "Auditorio",
+      "capacidade": 60
+    }
+  ],
+  "reunioes": []
+}
